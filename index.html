@@ -443,7 +443,6 @@ function update() {
       <td>${isCurrent ? '👈 當前到達' : (isTriggered ? '已通過' : '未到達')}</td>
     `;
 
-    // 依據觸發價 70 元進行分組
     if (l.price >= 70) {
       mainTableBody.appendChild(tr);
     } else {
@@ -454,7 +453,6 @@ function update() {
     }
   });
 
-  // 若當前觸發點位於 70 元以下，則自動展開摺疊區
   if (hasTriggeredInLowGroup && !isExpanded) {
     toggleLowPriceRows();
   } else {
