@@ -336,7 +336,9 @@ function updateToggleText() {
 
 async function fetchLivePrice() {
   try {
-    const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/0050.TW?interval=1m';
+    // 防快取時間戳記
+    const timestamp = new Date().getTime();
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/0050.TW?interval=1m&_=${timestamp}`;
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
     
     const res = await fetch(proxyUrl);
@@ -344,14 +346,25 @@ async function fetchLivePrice() {
     
     const data = await res.json();
     const parsed = JSON.parse(data.contents);
-    const livePrice = parsed.chart.result[0].meta.regularMarketPrice;
+    const meta = parsed.chart.result[0].meta;
 
-    if (livePrice) {
-      priceInput.value = livePrice;
+    // 判斷時間是否已過 13:30 (收盤時間)
+    const now = new Date();
+    const currentHourMinute = now.getHours() * 100 + now.getMinutes();
+
+    let targetPrice;
+    if (currentHourMinute >= 1330) {
+      targetPrice = meta.regularMarketPrice || meta.chartPreviousClose;
+    } else {
+      targetPrice = meta.regularMarketPrice || meta.chartPreviousClose;
+    }
+
+    if (targetPrice) {
+      priceInput.value = Number(targetPrice).toFixed(2);
       update();
     }
   } catch (err) {
-    console.log('使用預設或手動輸入價格', err);
+    console.log('使用手動輸入價格', err);
   }
 }
 
@@ -370,7 +383,6 @@ function update() {
   const levels = getStrategyLevels(anchor);
 
   const discountRatio = (anchor - price) / anchor;
-  const discountPercent = (discountRatio * 100).toFixed(1);
 
   let fgScore = Math.round(((1 - discountRatio - 0.70) / 0.30) * 100);
   fgScore = Math.min(Math.max(fgScore, 0), 100);
@@ -469,4 +481,3 @@ update();
 
 </body>
 </html>
-
