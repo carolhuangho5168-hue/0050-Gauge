@@ -143,7 +143,7 @@
   <div>
     <div class="header-title">0050 雙軌加碼價格溫度計</div>
 
-    <!-- 簡約輸入區 -->
+    <!-- 簡約輸入區（已移除固定預設舊價格，改為動態載入提示） -->
     <div class="input-box">
       <div class="input-item">
         <label for="anchorInput">定錨最高價</label>
@@ -151,7 +151,7 @@
       </div>
       <div class="input-item">
         <label for="priceInput">目前 0050 價格</label>
-        <input type="number" id="priceInput" value="100.15" step="0.01">
+        <input type="number" id="priceInput" placeholder="載入中..." step="0.01">
       </div>
     </div>
 
@@ -204,7 +204,7 @@
 
         <!-- 中央數字球 -->
         <circle cx="250" cy="250" r="50" fill="#ffffff" filter="drop-shadow(0px 2px 6px rgba(0,0,0,0.1))"/>
-        <text id="scoreNum" x="250" y="262" text-anchor="middle" font-size="26" font-weight="900" fill="#111111">$100.15</text>
+        <text id="scoreNum" x="250" y="262" text-anchor="middle" font-size="24" font-weight="900" fill="#111111">載入中</text>
       </svg>
     </div>
   </div>
@@ -212,7 +212,7 @@
   <!-- 行動提示卡片 -->
   <div id="actionCard" class="action-card">
     <div class="action-title" id="actionTitle">建議執行動作</div>
-    <div id="actionText" class="action-text">計算中...</div>
+    <div id="actionText" class="action-text">資料載入與計算中...</div>
   </div>
 </div>
 
@@ -336,7 +336,7 @@ function updateToggleText() {
 
 async function fetchLivePrice() {
   try {
-    // 防快取時間戳記
+    // 時間戳記防快取
     const timestamp = new Date().getTime();
     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/0050.TW?interval=1m&_=${timestamp}`;
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
@@ -348,7 +348,7 @@ async function fetchLivePrice() {
     const parsed = JSON.parse(data.contents);
     const meta = parsed.chart.result[0].meta;
 
-    // 判斷時間是否已過 13:30 (收盤時間)
+    // 判斷是否過 13:30 (收盤時間)
     const now = new Date();
     const currentHourMinute = now.getHours() * 100 + now.getMinutes();
 
@@ -364,7 +364,10 @@ async function fetchLivePrice() {
       update();
     }
   } catch (err) {
-    console.log('使用手動輸入價格', err);
+    console.log('API 讀取失敗，提示使用者手動輸入', err);
+    scoreNum.textContent = "請輸入";
+    actionTitle.textContent = "請手動輸入股價";
+    actionText.innerHTML = "目前暫無法自動連線最新股價，請於上方欄位<b>手動輸入目前 0050 價格</b>以進行計算。";
   }
 }
 
@@ -378,7 +381,11 @@ function getStrategyLevels(anchor) {
 
 function update() {
   const anchor = parseFloat(anchorInput.value) || 112;
-  const price = parseFloat(priceInput.value) || anchor;
+  const price = parseFloat(priceInput.value);
+
+  if (isNaN(price)) {
+    return;
+  }
 
   const levels = getStrategyLevels(anchor);
 
@@ -476,7 +483,6 @@ anchorInput.addEventListener('input', update);
 priceInput.addEventListener('input', update);
 
 fetchLivePrice();
-update();
 </script>
 
 </body>
