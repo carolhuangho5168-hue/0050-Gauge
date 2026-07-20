@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0050 雙軌加碼價格溫度計</title>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-main: #111111;
+      --text-muted: #666666;
+      --border-light: #e8e8e8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 12px 16px;
+    }
+
+    /* 第一幕：免捲軸全頁 */
+    .screen-1 {
+      min-height: 94vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-bottom: 8px;
+    }
+
+    .header-title {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 8px 0 12px 0;
+    }
+
+    /* 純淨輸入區 */
+    .input-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 32px;
+      background: #fafafa;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+      margin-bottom: 10px;
+    }
+
+    .input-item { display: flex; align-items: center; gap: 8px; }
+    .input-item label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+    .input-item input {
+      width: 100px; text-align: center; font-size: 18px; font-weight: 700;
+      border: 1px solid #ccc; border-radius: 6px; padding: 5px 0; outline: none; background: #fff;
+    }
+
+    /* CNN 100% 正半圓儀表板 */
+    .gauge-wrapper {
+      position: relative;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px 16px 12px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+      border: 1px solid var(--border-light);
+      text-align: center;
+    }
+
+    .arc-sector { fill: #f4f4f4; stroke: #ffffff; stroke-width: 3; transition: fill 0.3s, stroke 0.3s; }
+    .arc-text { font-size: 13px; font-weight: 800; fill: #444444; letter-spacing: 0.5px; }
+    .tick-text { font-size: 12px; font-weight: 700; fill: #777777; }
+
+    /* 行動提示卡片 */
+    .action-card {
+      background: #f9f9f9; border-radius: 10px; padding: 12px 16px;
+      text-align: left; margin-top: 10px; border-left: 5px solid #111;
+    }
+    .action-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
+    .action-text { font-size: 15px; line-height: 1.5; color: var(--text-main); }
+
+    /* 第二幕：關卡對照表 */
+    .screen-2 { padding-top: 24px; padding-bottom: 40px; }
+    .table-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+
+    table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-light);
+    }
+    th { padding: 12px 8px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border-light); background: #fafafa; }
+    td { padding: 11px 8px; text-align: center; border-bottom: 1px solid var(--border-light); }
+
+    tr.active-row { background-color: #fff8e1 !important; font-weight: 700; }
+    tr.triggered-row { color: #aaa; background-color: #fafafa; }
+
+    .tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .tag-left { background-color: #e8f5e9; color: #2e7d32; }
+    .tag-right { background-color: #fff3e0; color: #ef6c00; }
+
+    /* 折疊按鈕控制樣式 */
+    .toggle-row {
+      background-color: #f1f3f4;
+      cursor: pointer;
+      font-weight: 700;
+      color: #3c4043;
+      user-select: none;
+      transition: background-color 0.2s;
+    }
+    .toggle-row:hover {
+      background-color: #e8eaed;
+    }
+    .toggle-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .arrow-icon {
+      display: inline-block;
+      transition: transform 0.3s ease;
+      font-size: 12px;
+    }
+    .arrow-icon.collapsed {
+      transform: rotate(-90deg);
+    }
+    .hidden-group {
+      display: none;
+    }
+    .hidden-group.show {
+      display: table-row-group;
+    }
+  </style>
+</head>
+<body>
+
+<div class="screen-1">
+  <div>
+    <div class="header-title">0050 雙軌加碼價格溫度計</div>
+
+    <!-- 簡約輸入區 -->
+    <div class="input-box">
+      <div class="input-item">
+        <label for="anchorInput">定錨最高價</label>
+        <input type="number" id="anchorInput" value="112" step="0.1">
+      </div>
+      <div class="input-item">
+        <label for="priceInput">目前 0050 價格</label>
+        <input type="number" id="priceInput" value="100.15" step="0.01">
+      </div>
+    </div>
+
+    <!-- CNN 正半圓儀表板 -->
+    <div class="gauge-wrapper">
+      <svg width="100%" height="250" viewBox="0 0 500 270">
+        <defs>
+          <path id="textPath1" d="M 36 250 A 214 214 0 0 1 79 120" />
+          <path id="textPath2" d="M 82 114 A 214 214 0 0 1 184 38" />
+          <path id="textPath3" d="M 190 34 A 214 214 0 0 1 310 34" />
+          <path id="textPath4" d="M 316 38 A 214 214 0 0 1 418 114" />
+          <path id="textPath5" d="M 421 120 A 214 214 0 0 1 464 250" />
+        </defs>
+
+        <!-- 扇形區塊 -->
+        <path id="sector0" class="arc-sector" d="M 50 250 A 200 200 0 0 1 90 128 L 132 153 A 140 140 0 0 0 104 250 Z"/>
+        <path id="sector1" class="arc-sector" d="M 93 123 A 200 200 0 0 1 188 52 L 202 99 A 140 140 0 0 0 135 149 Z"/>
+        <path id="sector2" class="arc-sector" d="M 194 50 A 200 200 0 0 1 306 50 L 289 98 A 140 140 0 0 0 211 98 Z"/>
+        <path id="sector3" class="arc-sector" d="M 312 52 A 200 200 0 0 1 407 123 L 365 149 A 140 140 0 0 0 298 99 Z"/>
+        <path id="sector4" class="arc-sector" d="M 410 128 A 200 200 0 0 1 450 250 L 396 250 A 140 140 0 0 0 368 153 Z"/>
+
+        <!-- 中文分區標籤 -->
+        <text class="arc-text"><textPath href="#textPath1" startOffset="50%" text-anchor="middle">深度特價</textPath></text>
+        <text class="arc-text"><textPath href="#textPath2" startOffset="50%" text-anchor="middle">右手加碼</textPath></text>
+        <text class="arc-text"><textPath href="#textPath3" startOffset="50%" text-anchor="middle">雙軌甜蜜點</textPath></text>
+        <text class="arc-text"><textPath href="#textPath4" startOffset="50%" text-anchor="middle">左手啟動</textPath></text>
+        <text class="arc-text"><textPath href="#textPath5" startOffset="50%" text-anchor="middle">高價觀望</textPath></text>
+
+        <!-- 內圈刻度 -->
+        <g fill="#777777">
+          <text x="80" y="245" class="tick-text" text-anchor="middle">-30%</text>
+          <text x="146" y="170" class="tick-text" text-anchor="middle">-22.5%</text>
+          <text x="250" y="128" class="tick-text" text-anchor="middle">-15%</text>
+          <text x="354" y="170" class="tick-text" text-anchor="middle">-7.5%</text>
+          <text x="420" y="245" class="tick-text" text-anchor="middle">0%</text>
+
+          <circle cx="95" cy="225" r="2"/><circle cx="100" cy="200" r="2"/>
+          <circle cx="112" cy="176" r="2"/><circle cx="132" cy="155" r="2"/>
+          <circle cx="157" cy="139" r="2"/><circle cx="185" cy="128" r="2"/>
+          <circle cx="215" cy="122" r="2"/><circle cx="285" cy="122" r="2"/>
+          <circle cx="315" cy="128" r="2"/><circle cx="343" cy="139" r="2"/>
+          <circle cx="368" cy="155" r="2"/><circle cx="388" cy="176" r="2"/>
+          <circle cx="400" cy="200" r="2"/><circle cx="405" cy="225" r="2"/>
+        </g>
+
+        <!-- 指針 -->
+        <g id="needle">
+          <line x1="250" y1="250" x2="250" y2="80" stroke="#111111" stroke-width="5" stroke-linecap="round"/>
+        </g>
+
+        <!-- 中央數字球 -->
+        <circle cx="250" cy="250" r="50" fill="#ffffff" filter="drop-shadow(0px 2px 6px rgba(0,0,0,0.1))"/>
+        <text id="scoreNum" x="250" y="262" text-anchor="middle" font-size="26" font-weight="900" fill="#111111">$100.15</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- 行動提示卡片 -->
+  <div id="actionCard" class="action-card">
+    <div class="action-title" id="actionTitle">建議執行動作</div>
+    <div id="actionText" class="action-text">計算中...</div>
+  </div>
+</div>
+
+<!-- 第二幕：關卡對照表 -->
+<div class="screen-2">
+  <div class="table-title">雙軌加碼關卡清單</div>
+  <table>
+    <thead>
+      <tr>
+        <th>關卡</th>
+        <th>對應關級</th>
+        <th>觸發價</th>
+        <th>折扣度</th>
+        <th>買入股數</th>
+        <th>預估金額</th>
+        <th>狀態</th>
+      </tr>
+    </thead>
+    <!-- 主要顯示區（≥ 70 元） -->
+    <tbody id="mainTableBody"></tbody>
+
+    <!-- 摺疊控制按鈕 -->
+    <tbody>
+      <tr class="toggle-row" onclick="toggleLowPriceRows()">
+        <td colspan="7">
+          <div class="toggle-content">
+            <span id="arrowIcon" class="arrow-icon collapsed">▼</span>
+            <span id="toggleText">展開 70 元以下關卡 (共 0 關)</span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+
+    <!-- 隱藏折疊區（< 70 元） -->
+    <tbody id="lowPriceTableBody" class="hidden-group"></tbody>
+  </table>
+</div>
+
+<script>
+const anchorInput = document.getElementById('anchorInput');
+const priceInput = document.getElementById('priceInput');
+const needle = document.getElementById('needle');
+const scoreNum = document.getElementById('scoreNum');
+const actionCard = document.getElementById('actionCard');
+const actionTitle = document.getElementById('actionTitle');
+const actionText = document.getElementById('actionText');
+
+const mainTableBody = document.getElementById('mainTableBody');
+const lowPriceTableBody = document.getElementById('lowPriceTableBody');
+const arrowIcon = document.getElementById('arrowIcon');
+const toggleText = document.getElementById('toggleText');
+
+let isExpanded = false;
+
+const highlightColors = [
+  { fill: '#fbe9e7', stroke: '#ff5722' },
+  { fill: '#ffe0b2', stroke: '#fb8c00' },
+  { fill: '#fff9c4', stroke: '#fbc02d' },
+  { fill: '#e8f5e9', stroke: '#4caf50' },
+  { fill: '#eceff1', stroke: '#78909c' }
+];
+
+const rawData = [
+  { rank: 1, type: 'left', name: '左手-第1關', discount: -0.075, priceRatio: 0.925, shares: 1000 },
+  { rank: 2, type: 'right', name: '右手-第1關', discount: -0.100, priceRatio: 0.900, shares: 500 },
+  { rank: 3, type: 'left', name: '左手-第2關', discount: -0.149, priceRatio: 0.851, shares: 1000 },
+  { rank: 4, type: 'right', name: '右手-第2關', discount: -0.150, priceRatio: 0.850, shares: 500 },
+  { rank: 5, type: 'right', name: '右手-第3關', discount: -0.200, priceRatio: 0.800, shares: 500 },
+  { rank: 6, type: 'left', name: '左手-第3關', discount: -0.217, priceRatio: 0.783, shares: 2000 },
+  { rank: 7, type: 'right', name: '右手-第4關', discount: -0.250, priceRatio: 0.750, shares: 500 },
+  { rank: 8, type: 'left', name: '左手-第4關', discount: -0.280, priceRatio: 0.720, shares: 2000 },
+  { rank: 9, type: 'right', name: '右手-第5關', discount: -0.300, priceRatio: 0.700, shares: 500 },
+  { rank: 10, type: 'left', name: '左手-第5關', discount: -0.337, priceRatio: 0.663, shares: 2000 },
+  { rank: 11, type: 'right', name: '右手-第6關', discount: -0.350, priceRatio: 0.650, shares: 500 },
+  { rank: 12, type: 'left', name: '左手-第6關', discount: -0.390, priceRatio: 0.610, shares: 2000 },
+  { rank: 13, type: 'right', name: '右手-第7關', discount: -0.400, priceRatio: 0.600, shares: 500 },
+  { rank: 14, type: 'left', name: '左手-第7關', discount: -0.439, priceRatio: 0.561, shares: 3000 },
+  { rank: 15, type: 'right', name: '右手-第8關', discount: -0.450, priceRatio: 0.550, shares: 500 },
+  { rank: 16, type: 'left', name: '左手-第8關', discount: -0.484, priceRatio: 0.516, shares: 3000 },
+  { rank: 17, type: 'right', name: '右手-第9關', discount: -0.500, priceRatio: 0.500, shares: 500 },
+  { rank: 18, type: 'left', name: '左手-第9關', discount: -0.525, priceRatio: 0.475, shares: 4000 },
+  { rank: 19, type: 'right', name: '右手-第10關', discount: -0.550, priceRatio: 0.450, shares: 500 },
+  { rank: 20, type: 'left', name: '左手-第10關', discount: -0.563, priceRatio: 0.437, shares: 5000 },
+  { rank: 21, type: 'left', name: '左手-第11關', discount: -0.598, priceRatio: 0.402, shares: 5000 },
+  { rank: 22, type: 'right', name: '右手-第11關', discount: -0.600, priceRatio: 0.400, shares: 500 },
+  { rank: 23, type: 'left', name: '左手-第12關', discount: -0.630, priceRatio: 0.370, shares: 6000 },
+  { rank: 24, type: 'right', name: '右手-第12關', discount: -0.650, priceRatio: 0.350, shares: 500 },
+  { rank: 25, type: 'left', name: '左手-第13關', discount: -0.660, priceRatio: 0.340, shares: 6000 },
+  { rank: 26, type: 'left', name: '左手-第14關', discount: -0.687, priceRatio: 0.313, shares: 7000 },
+  { rank: 27, type: 'right', name: '右手-第13關', discount: -0.700, priceRatio: 0.300, shares: 500 },
+  { rank: 28, type: 'left', name: '左手-第15關', discount: -0.712, priceRatio: 0.288, shares: 7000 },
+  { rank: 29, type: 'left', name: '左手-第16關', discount: -0.735, priceRatio: 0.265, shares: 8000 },
+  { rank: 30, type: 'right', name: '右手-第14關', discount: -0.750, priceRatio: 0.250, shares: 500 },
+  { rank: 31, type: 'left', name: '左手-第17關', discount: -0.756, priceRatio: 0.244, shares: 8000 },
+  { rank: 32, type: 'left', name: '左手-第18關', discount: -0.776, priceRatio: 0.224, shares: 8000 },
+  { rank: 33, type: 'left', name: '左手-第19關', discount: -0.794, priceRatio: 0.206, shares: 8000 },
+  { rank: 34, type: 'right', name: '右手-第15關', discount: -0.800, priceRatio: 0.200, shares: 500 },
+  { rank: 35, type: 'left', name: '左手-第20關', discount: -0.810, priceRatio: 0.190, shares: 8000 }
+];
+
+function toggleLowPriceRows() {
+  isExpanded = !isExpanded;
+  if (isExpanded) {
+    lowPriceTableBody.classList.add('show');
+    arrowIcon.classList.remove('collapsed');
+  } else {
+    lowPriceTableBody.classList.remove('show');
+    arrowIcon.classList.add('collapsed');
+  }
+  updateToggleText();
+}
+
+function updateToggleText() {
+  const count = lowPriceTableBody.children.length;
+  if (isExpanded) {
+    toggleText.textContent = `收合 70 元以下關卡 (共 ${count} 關)`;
+  } else {
+    toggleText.textContent = `展開 70 元以下關卡 (共 ${count} 關)`;
+  }
+}
+
+async function fetchLivePrice() {
+  try {
+    const targetUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/0050.TW?interval=1m';
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error('Fetch failed');
+    
+    const data = await res.json();
+    const parsed = JSON.parse(data.contents);
+    const livePrice = parsed.chart.result[0].meta.regularMarketPrice;
+
+    if (livePrice) {
+      priceInput.value = livePrice;
+      update();
+    }
+  } catch (err) {
+    console.log('使用預設或手動輸入價格', err);
+  }
+}
+
+function getStrategyLevels(anchor) {
+  return rawData.map(item => ({
+    ...item,
+    id: `RANK_${item.rank}`,
+    price: anchor * item.priceRatio
+  })).sort((a, b) => b.price - a.price);
+}
+
+function update() {
+  const anchor = parseFloat(anchorInput.value) || 112;
+  const price = parseFloat(priceInput.value) || anchor;
+
+  const levels = getStrategyLevels(anchor);
+
+  const discountRatio = (anchor - price) / anchor;
+  const discountPercent = (discountRatio * 100).toFixed(1);
+
+  let fgScore = Math.round(((1 - discountRatio - 0.70) / 0.30) * 100);
+  fgScore = Math.min(Math.max(fgScore, 0), 100);
+
+  scoreNum.textContent = `$${price.toFixed(2)}`;
+
+  const angleDeg = 180 - (fgScore / 100) * 180;
+  const rad = angleDeg * Math.PI / 180;
+  const tipX = 250 + 165 * Math.cos(rad);
+  const tipY = 250 - 165 * Math.sin(rad);
+
+  needle.querySelector('line').setAttribute('x2', tipX.toFixed(1));
+  needle.querySelector('line').setAttribute('y2', tipY.toFixed(1));
+
+  let activeSectorIdx = Math.floor(fgScore / 20);
+  if (activeSectorIdx > 4) activeSectorIdx = 4;
+
+  for (let i = 0; i < 5; i++) {
+    const sectorEl = document.getElementById(`sector${i}`);
+    if (i === activeSectorIdx) {
+      sectorEl.style.fill = highlightColors[i].fill;
+      sectorEl.style.stroke = highlightColors[i].stroke;
+      sectorEl.style.strokeWidth = "3";
+    } else {
+      sectorEl.style.fill = "#f4f4f4";
+      sectorEl.style.stroke = "#ffffff";
+      sectorEl.style.strokeWidth = "3";
+    }
+  }
+
+  const triggeredLevels = levels.filter(l => price <= l.price);
+  const currentLevel = triggeredLevels[0];
+
+  actionCard.style.borderLeftColor = highlightColors[activeSectorIdx].stroke;
+
+  if (!currentLevel) {
+    actionTitle.textContent = "當前狀態：高價觀望區";
+    actionText.innerHTML = "目前股價高昂（無明顯折價），尚未觸發任何加碼關卡。建議<b>保持常態定期定額計畫</b>即可。";
+  } else {
+    actionTitle.textContent = `當前狀態：觸發 關卡 ${currentLevel.rank}（${currentLevel.name}）`;
+    const cost = Math.round(price * currentLevel.shares);
+    actionText.innerHTML = `當前價格 ($${price.toFixed(2)}) 已跌破 <b>${currentLevel.name} (${currentLevel.price.toFixed(2)}元)</b>！(拉回 ${(currentLevel.discount * 100).toFixed(2)}%)<br>` +
+                           `• 建議執行加碼：<b>${currentLevel.shares.toLocaleString()} 股</b><br>` +
+                           `• 預估需準備資金：約 <b>$${cost.toLocaleString()} 元</b>`;
+  }
+
+  mainTableBody.innerHTML = '';
+  lowPriceTableBody.innerHTML = '';
+
+  let hasTriggeredInLowGroup = false;
+
+  levels.forEach(l => {
+    const tr = document.createElement('tr');
+    const isTriggered = price <= l.price;
+    const isCurrent = currentLevel && currentLevel.id === l.id;
+
+    if (isCurrent) tr.className = 'active-row';
+    else if (isTriggered) tr.className = 'triggered-row';
+
+    const estCost = Math.round(l.price * l.shares);
+    const tagClass = l.type === 'left' ? 'tag-left' : 'tag-right';
+
+    tr.innerHTML = `
+      <td><b>${l.rank}</b></td>
+      <td><span class="tag ${tagClass}">${l.name}</span></td>
+      <td><b>${l.price.toFixed(2)}</b></td>
+      <td>${(l.discount * 100).toFixed(2)}%</td>
+      <td>${l.shares.toLocaleString()} 股</td>
+      <td>$${estCost.toLocaleString()}</td>
+      <td>${isCurrent ? '👈 當前到達' : (isTriggered ? '已通過' : '未到達')}</td>
+    `;
+
+    // 依據觸發價 70 元進行分組
+    if (l.price >= 70) {
+      mainTableBody.appendChild(tr);
+    } else {
+      lowPriceTableBody.appendChild(tr);
+      if (isCurrent) {
+        hasTriggeredInLowGroup = true;
+      }
+    }
+  });
+
+  // 若當前觸發點位於 70 元以下，則自動展開摺疊區
+  if (hasTriggeredInLowGroup && !isExpanded) {
+    toggleLowPriceRows();
+  } else {
+    updateToggleText();
+  }
+}
+
+anchorInput.addEventListener('input', update);
+priceInput.addEventListener('input', update);
+
+fetchLivePrice();
+update();
+</script>
+
+</body>
+</html>
