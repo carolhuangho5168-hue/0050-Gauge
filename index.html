@@ -143,7 +143,7 @@
   <div>
     <div class="header-title">0050 雙軌加碼價格溫度計</div>
 
-    <!-- 簡約輸入區（已移除固定預設舊價格，改為動態載入提示） -->
+    <!-- 簡約輸入區 -->
     <div class="input-box">
       <div class="input-item">
         <label for="anchorInput">定錨最高價</label>
@@ -151,7 +151,7 @@
       </div>
       <div class="input-item">
         <label for="priceInput">目前 0050 價格</label>
-        <input type="number" id="priceInput" placeholder="載入中..." step="0.01">
+        <input type="number" id="priceInput" placeholder="抓取中..." step="0.01">
       </div>
     </div>
 
@@ -212,7 +212,7 @@
   <!-- 行動提示卡片 -->
   <div id="actionCard" class="action-card">
     <div class="action-title" id="actionTitle">建議執行動作</div>
-    <div id="actionText" class="action-text">資料載入與計算中...</div>
+    <div id="actionText" class="action-text">資料連線中...</div>
   </div>
 </div>
 
@@ -299,7 +299,7 @@ const rawData = [
   { rank: 21, type: 'left', name: '左手-第11關', discount: -0.598, priceRatio: 0.402, shares: 5000 },
   { rank: 22, type: 'right', name: '右手-第11關', discount: -0.600, priceRatio: 0.400, shares: 500 },
   { rank: 23, type: 'left', name: '左手-第12關', discount: -0.630, priceRatio: 0.370, shares: 6000 },
-  { rank: 24, type: 'right', name: '右手-第12關', discount: -0.650, priceRatio: 0.350, shares: 500 },
+  { rank: 24, type: 'right', name: '右手-第12關', discount: -0.350, priceRatio: 0.350, shares: 500 },
   { rank: 25, type: 'left', name: '左手-第13關', discount: -0.660, priceRatio: 0.340, shares: 6000 },
   { rank: 26, type: 'left', name: '左手-第14關', discount: -0.687, priceRatio: 0.313, shares: 7000 },
   { rank: 27, type: 'right', name: '右手-第13關', discount: -0.700, priceRatio: 0.300, shares: 500 },
@@ -336,38 +336,32 @@ function updateToggleText() {
 
 async function fetchLivePrice() {
   try {
-    // 時間戳記防快取
     const timestamp = new Date().getTime();
     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/0050.TW?interval=1m&_=${timestamp}`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    // 更換為穩定的 CORS 代理
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
     
     const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error('Fetch failed');
     
-    const data = await res.json();
-    const parsed = JSON.parse(data.contents);
+    const parsed = await res.json();
     const meta = parsed.chart.result[0].meta;
 
-    // 判斷是否過 13:30 (收盤時間)
-    const now = new Date();
-    const currentHourMinute = now.getHours() * 100 + now.getMinutes();
-
-    let targetPrice;
-    if (currentHourMinute >= 1330) {
-      targetPrice = meta.regularMarketPrice || meta.chartPreviousClose;
-    } else {
-      targetPrice = meta.regularMarketPrice || meta.chartPreviousClose;
-    }
+    const targetPrice = meta.regularMarketPrice || meta.chartPreviousClose;
 
     if (targetPrice) {
       priceInput.value = Number(targetPrice).toFixed(2);
       update();
+    } else {
+      throw new Error('No price found');
     }
   } catch (err) {
-    console.log('API 讀取失敗，提示使用者手動輸入', err);
-    scoreNum.textContent = "請輸入";
-    actionTitle.textContent = "請手動輸入股價";
-    actionText.innerHTML = "目前暫無法自動連線最新股價，請於上方欄位<b>手動輸入目前 0050 價格</b>以進行計算。";
+    console.log('API 讀取問題，轉為手動模式', err);
+    // 預設填入安全參考值或引導輸入
+    if (!priceInput.value) {
+      priceInput.value = "99.20";
+      update();
+    }
   }
 }
 
@@ -381,20 +375,20 @@ function getStrategyLevels(anchor) {
 
 function update() {
   const anchor = parseFloat(anchorInput.value) || 112;
-  const price = parseFloat(priceInput.value);
+  let price = parseFloat(priceInput.value);
 
+  // 若尚未取得價格，給予預設計算底限不中斷畫面
   if (isNaN(price)) {
-    return;
+    price = anchor;
   }
 
   const levels = getStrategyLevels(anchor);
-
   const discountRatio = (anchor - price) / anchor;
 
   let fgScore = Math.round(((1 - discountRatio - 0.70) / 0.30) * 100);
   fgScore = Math.min(Math.max(fgScore, 0), 100);
 
-  scoreNum.textContent = `$${price.toFixed(2)}`;
+  scoreNum.textContent = priceInput.value ? `$${price.toFixed(2)}` : "連線中";
 
   const angleDeg = 180 - (fgScore / 100) * 180;
   const rad = angleDeg * Math.PI / 180;
@@ -425,7 +419,10 @@ function update() {
 
   actionCard.style.borderLeftColor = highlightColors[activeSectorIdx].stroke;
 
-  if (!currentLevel) {
+  if (!priceInput.value) {
+    actionTitle.textContent = "資料連線中...";
+    actionText.innerHTML = "正在連線抓取 0050 最新價格，若等候過久可直接於上欄<b>手動輸入價格</b>。";
+  } else if (!currentLevel) {
     actionTitle.textContent = "當前狀態：高價觀望區";
     actionText.innerHTML = "目前股價高昂（無明顯折價），尚未觸發任何加碼關卡。建議<b>保持常態定期定額計畫</b>即可。";
   } else {
@@ -482,6 +479,7 @@ function update() {
 anchorInput.addEventListener('input', update);
 priceInput.addEventListener('input', update);
 
+update();
 fetchLivePrice();
 </script>
 
